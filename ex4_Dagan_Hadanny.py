@@ -159,7 +159,7 @@ class CollectSum:
         self.collect_sum(root, None)
         self.distribute_sum(None, root)
         likelihood = sum(self.marginal_tables[root])
-        conditionals = {v: self.normalize(table) for v, table in 
+        conditionals = {v: self.normalize(table) for v, table in
                         self.marginal_tables.items() if v not in self.observed}
         return self.local_tables, self.collect_msgs, sum(self.marginal_tables[root])
 
@@ -207,22 +207,31 @@ def make_dict_of_row(row, observed_indices):
         if item != -1 and i in observed_indices:
             result[i] = item
     return result
-    
+
+
 def maximum_probability_inference(filename, initial_setting, observed_indices):
     data = get_table(filename, hidden_nodes, observed_nodes)
     parameters = initial_setting
     history = []
+    prev_likelihood = 0
     for i in range(25):
         current_edges = dict(zip(edges, parameters))
+        data_likelihood = 0
         for row_index in range(data.shape[0]):
             observed = make_dict_of_row(data[row_index], observed_indices)
             collect_max = CollectMax(observed, current_edges)
+            collect_sum = CollectSum(observed, current_edges)
+            _, _, likelihood = collect_sum.collect_distribute_sum(1)
+            data_likelihood += np.log(likelihood) + np.log(0.5)
             max_prob_assignment = collect_max.collect_distribute_max(1)
             data[row_index] = [-1] + [max_prob_assignment[i] for i in range(1, 11)]
         new_likelihood = get_log_like(data, parameters)
-        history.append(parameters + [new_likelihood])
+        history.append(parameters + [new_likelihood, data_likelihood])
         new_parameters = get_parameters(data)
         parameters = new_parameters
+        if np.isclose(prev_likelihood, new_likelihood):
+            break
+        prev_likelihood = new_likelihood
 
     return history
 
@@ -274,7 +283,7 @@ if __name__ == "__main__":
     if option == 'M':
         initial_setting = [0.5] * 9
         probs = maximum_probability_inference(sample_txt_path2, initial_setting, [3, 4, 6, 7, 9, 10])
-        headers = edges + ['log-prob']
+        headers = edges + ['log-prob', 'log-ld']
         print(tabulate(probs, headers=headers))
 
     if option == 'E':
