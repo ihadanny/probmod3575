@@ -243,9 +243,13 @@ def expectation_maximization_inference(filename, initial_setting, observed_indic
         current_edges = dict(zip(edges, initial_setting))
         edges_sum_change = {edge: 0 for edge in edges}
         edges_sum_no_change = {edge: 0 for edge in edges}
+        max_prob_data = np.zeros(data.shape)
         for row_index in range(data.shape[0]):
             observed = make_dict_of_row(data[row_index], observed_indices)
             collect_sum = CollectSum(observed, current_edges)
+            collect_max = CollectMax(observed, current_edges)
+            max_prob_assignment = collect_max.collect_distribute_max(1)
+            max_prob_data[row_index] = [-1] + [max_prob_assignment[i] for i in range(1, 11)]
             local_tables, messages, likelihood  = collect_sum.collect_distribute_sum(1)
             sum_log_likelihood += np.log(likelihood)
             for edge in edges:
@@ -258,9 +262,9 @@ def expectation_maximization_inference(filename, initial_setting, observed_indic
             edges_sum_no_change[edge] *= (1 - current_edges[edge])
         new_setting = []
         for edge in edges:
-            new_setting.append(np.round(edges_sum_change[edge] / (edges_sum_change[edge] + edges_sum_no_change[edge]), 3))
-        
-        history.append(initial_setting + [sum_log_likelihood])
+            new_setting.append(edges_sum_change[edge] / (edges_sum_change[edge] + edges_sum_no_change[edge]))
+        most_likely = get_log_like(max_prob_data, initial_setting)
+        history.append(initial_setting + [most_likely, sum_log_likelihood])
         initial_setting = new_setting
         
     return history
@@ -289,5 +293,5 @@ if __name__ == "__main__":
     if option == 'E':
         initial_setting = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.4, 0.4, 0.4]
         probs = expectation_maximization_inference(sample_txt_path2, initial_setting, [3, 4, 6, 7, 9, 10])
-        headers = edges + ['log-ld']
+        headers = edges + ['log-prob', 'log-ld']
         print(tabulate(probs, headers=headers))
