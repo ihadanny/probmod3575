@@ -252,8 +252,8 @@ def expectation_maximization_inference(filename, initial_setting, observed_indic
             max_prob_data[row_index] = [-1] + [max_prob_assignment[i] for i in range(1, 11)]
             local_tables, messages, likelihood  = collect_sum.collect_distribute_sum(1)
             sum_log_likelihood += np.log(likelihood)
+            L = likelihood
             for edge in edges:
-                L = 1
                 for i in [0, 1]:
                     edges_sum_change[edge] += (local_tables[edge[1]][i] / messages[edge][i] * local_tables[edge[0]][i-1] / messages[(edge[1], edge[0])][i-1]) / L
                     edges_sum_no_change[edge] += (local_tables[edge[1]][i] / messages[edge][i] * local_tables[edge[0]][i] / messages[(edge[1], edge[0])][i]) / L
